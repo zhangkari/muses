@@ -1,19 +1,16 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.novoda.bintray-release'
-
+apply plugin: 'maven'
 
 def build = depends.build
 def support = depends.support
 def test = depends.test
 
-def version_code = 000001
-def version_name = "0.0.1"
-
 def USER = "zhangkari"
 def GROUP = "com.class100.muses"
 def ARTIFACT = "muses"
-def VCode = version_code
-def VName = version_name
+def VCode = depends.artifact.VCode
+def VName = depends.artifact.VName
 def DESCRIPTION = "lib Muses for android infra"
 def URL = "https://github.com/zhangkari/muses"
 
@@ -23,8 +20,8 @@ android {
     defaultConfig {
         minSdkVersion build.minSdkVersion
         targetSdkVersion build.compileSdkVersion
-        versionCode version_code
-        versionName version_name
+        versionCode VCode
+        versionName VName
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -46,6 +43,67 @@ android {
         website = URL
     }
 
+}
+
+def isRelease() {
+    return !depends.artifact.VName.contains("-")
+}
+
+def getRepoUrl() {
+    def url = NEXUS_HOST_URL + "/repository"
+    def releasesUrl = url + "/maven-releases/"
+    def snapshotUrl = url + "/maven-snapshots/"
+    isRelease() ? releasesUrl : snapshotUrl
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = GROUP
+            artifactId = ARTIFACT
+            version = VName
+        }
+    }
+
+    repositories {
+        maven {
+            def url = NEXUS_HOST_URL + "/repository/maven-public"
+            def releasesUrl = url + "/maven-releases/"
+            def snapshotUrl = url + "/maven-snapshots/"
+            url = isRelease() ? releasesUrl : snapshotUrl
+            credentials {
+                username = NEXUS_USERNAME
+                password = NEXUS_PASSWORD
+            }
+        }
+    }
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            pom.groupId = GROUP
+            pom.artifactId = ARTIFACT
+            pom.version = VName
+            repository(url: getRepoUrl()) {
+                authentication(userName: NEXUS_USERNAME, password: NEXUS_PASSWORD)
+            }
+        }
+    }
+
+    println("uploadArchives")
+    println("####################################")
+    println("url => " + getRepoUrl())
+    println("artifact => " + GROUP + ":" + ARTIFACT + ":" + VName)
+    println("####################################")
+}
+
+def vsn(artifact) {
+    if (isRelease()) {
+        return artifact
+    } else {
+        return "$artifact-SNAPSHOT"
+    }
 }
 
 dependencies {
